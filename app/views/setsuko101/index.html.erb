@@ -1,0 +1,17 @@
+<html>
+<head>
+<%= stylesheet_link_tag 'index-app', media: 'all', 'data-turbolinks-track' => true %>
+</head>
+
+<body>
+<div class="index_back">
+  <%= image_tag('index_back.png') %>
+</div>
+
+<div class="start_button">
+<%= link_to(image_tag('start_button.png'), {:controller => "setsuko101", :action => "nyan"}) %>
+</div>
+
+</body>
+
+</html>
