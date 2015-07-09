@@ -1,0 +1,92 @@
+GameMain = ->
+  FIELD_WIDTH = 720
+  FIELD_HEIGHT = 1120
+  # 画面に出す猫の最大数
+  MAX_NYAN_OBJ = 10
+  # 猫の生成間隔
+  GEN_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER + Phaser.Timer.QUARTER / 2
+  # 猫の生存期間
+  LIVE_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER * 8
+
+  sprite = ""
+  m_game_scale = 1.0
+  m_nyan_group = ""
+
+  # CSSでサイズ設定するメソッド
+  FixViewPort = ->
+    if (window.innerWidth / FIELD_WIDTH) < (window.innerHeight / FIELD_HEIGHT) 
+      m_game_scale = window.innerWidth / FIELD_WIDTH
+      top = (window.innerHeight - FIELD_HEIGHT * m_game_scale) / 2
+      $('#phaser-nyan').css({'position':'absolute', 'top':top+'px'})
+    else 
+      m_game_scale = window.innerHeight / FIELD_HEIGHT
+      left = (window.innerWidth - FIELD_WIDTH * m_game_scale) / 2
+      $('#phaser-nyan').css({'position':'absolute', 'left':left+'px'})
+
+  preload = ->
+    game.time.advancedTiming = true;
+
+    game.load.image('nyannyan', '<%= image_path("nyan/nyannyan.png") %>');
+    game.load.image('alps', '<%= image_path("nyan/alps.jpg") %>');
+
+  create = ->
+    FixViewPort()
+    $('#phaser-nyan').css({
+      '-webkit-transform-origin': '0px 0px 0px'
+      '-webkit-transform': 'scale(' + m_game_scale + ')'
+    })
+
+#    game.stage.backgroundColor = '#0072bc';
+    game.add.image(0, 0, 'alps')
+
+    # にゃんにゃんグループ初期化
+    m_nyan_group = game.add.group()
+    m_nyan_group.createMultiple(MAX_NYAN_OBJ, 'nyannyan')
+    m_nyan_group.enableBody = true
+
+    # にゃんにゃん生成イベント追加
+    game.time.events.loop(GEN_NYAN_TIMER_DEFAULT, GenerateNyanNyan, this)
+
+  
+  # にゃんにゃんkillメソッド
+  KillNyanNyan = (nyan)->
+    nyan.kill()
+#    console.log("test")
+
+  # にゃんにゃん生成メソッド
+  GenerateNyanNyan = ->
+#    nyan = m_nyan_group.create(0, 0, 'nyannyan')
+    nyan = m_nyan_group.getFirstExists(false)
+    nyan.reset(Math.random()*(FIELD_WIDTH - nyan.width), Math.random()*(FIELD_HEIGHT - nyan.height))
+    nyan.alpha = 1
+#    nyan.x = Math.random()*(FIELD_WIDTH - nyan.width)
+#    nyan.y = Math.random()*(FIELD_HEIGHT - nyan.height)
+    
+    # にゃんにゃんフェードアウト -> 削除
+    f_out = game.add.tween(nyan).to({ alpha: 0 }, 400, "Linear", true)
+    f_out.onComplete.add(KillNyanNyan, nyan)
+#    f_out.start()
+
+    # にゃんにゃん削除イベント追加
+#    destroy_e = game.time.events.add(LIVE_NYAN_TIMER_DEFAULT, nyan.kill, nyan)
+#    console.log(destroy_e)
+#    destroy_e.time.events.add(LIVE_NYAN_TIMER_DEFAULT, nyan.kill, nyan)
+
+  update = ->
+
+  render = ->
+    yi = 32
+    y = 0
+    game.debug.text('window.innerWidth : ' + window.innerWidth, 0, y += yi)
+    game.debug.text('window.innerHeight : ' + window.innerHeight, 0, y += yi)
+    
+    game.debug.text('innerWidth/FIELD_WIDTH : ' + window.innerWidth / FIELD_WIDTH, 0, y += yi)
+    game.debug.text('innerHeight/FIELD_HEIGHT : ' + window.innerHeight / FIELD_HEIGHT, 0, y += yi)
+
+    game.debug.text('m_game_scale : ' + m_game_scale, 0, y += yi)
+    game.debug.text('fps : ' + game.time.fps, 0, y += yi)
+    game.debug.text('NyanNyanCount : ' + m_nyan_group.length, 0, y += yi)
+
+  game = new Phaser.Game(FIELD_WIDTH, FIELD_HEIGHT, Phaser.AUTO, 'phaser-nyan', { preload, create, update, render });
+
+$(document).ready(GameMain)
