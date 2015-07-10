@@ -55,22 +55,13 @@ GameMain = ->
 
   # にゃんにゃん生成メソッド
   GenerateNyanNyan = ->
-#    nyan = m_nyan_group.create(0, 0, 'nyannyan')
     nyan = m_nyan_group.getFirstExists(false)
     nyan.reset(Math.random()*(FIELD_WIDTH - nyan.width), Math.random()*(FIELD_HEIGHT - nyan.height))
     nyan.alpha = 1
-#    nyan.x = Math.random()*(FIELD_WIDTH - nyan.width)
-#    nyan.y = Math.random()*(FIELD_HEIGHT - nyan.height)
     
     # にゃんにゃんフェードアウト -> 削除
     f_out = game.add.tween(nyan).to({ alpha: 0 }, 400, "Linear", true)
     f_out.onComplete.add(KillNyanNyan, nyan)
-#    f_out.start()
-
-    # にゃんにゃん削除イベント追加
-#    destroy_e = game.time.events.add(LIVE_NYAN_TIMER_DEFAULT, nyan.kill, nyan)
-#    console.log(destroy_e)
-#    destroy_e.time.events.add(LIVE_NYAN_TIMER_DEFAULT, nyan.kill, nyan)
 
   update = ->
 
