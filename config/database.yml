@@ -49,6 +49,9 @@ test:
 #
 production:
   <<: *default
-  database: setsuko101_production
-  username: setsuko101
-  password: <%= ENV['SETSUKO101_DATABASE_PASSWORD'] %>
+  host: us-cdbr-iron-east-02.cleardb.net
+  database: heroku_86c3e42f04921fd
+  username: bc0df3ce37f3e4
+  password: 392b8e91
+
+
