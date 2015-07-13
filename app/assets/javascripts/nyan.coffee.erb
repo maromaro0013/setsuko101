@@ -2,26 +2,40 @@ GameMain = ->
   FIELD_WIDTH = 720
   FIELD_HEIGHT = 1120
   # 画面に出す猫の最大数
-  MAX_NYAN_OBJ = 10
+  MAX_NYAN_OBJ = 16
   # 猫の生成間隔
-  GEN_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER + Phaser.Timer.QUARTER / 2
-  # 猫の生存期間
-  LIVE_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER * 8
+  GEN_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER
+  # 猫の待機期間
+  NYAN_STAY_FRAME_DEFAULT = 40
+  # 猫の移動速度
+  NYAN_MOVE_X = 4
+  # 猫の出現オフセット
+  NYAN_OFS_X = 64
 
-  sprite = ""
   m_game_scale = 1.0
   m_nyan_group = ""
+  m_rng = new Phaser.RandomDataGenerator(new Date().toString())
+  m_territory = []
+  m_update_count = 0
+  m_issetup = false
+  m_setup_flg = false
 
-  # CSSでサイズ設定するメソッド
   FixViewPort = ->
     if (window.innerWidth / FIELD_WIDTH) < (window.innerHeight / FIELD_HEIGHT) 
       m_game_scale = window.innerWidth / FIELD_WIDTH
-      top = (window.innerHeight - FIELD_HEIGHT * m_game_scale) / 2
-      $('#phaser-nyan').css({'position':'absolute', 'top':top+'px'})
     else 
       m_game_scale = window.innerHeight / FIELD_HEIGHT
-      left = (window.innerWidth - FIELD_WIDTH * m_game_scale) / 2
-      $('#phaser-nyan').css({'position':'absolute', 'left':left+'px'})
+
+  # オブジェクトをゲームに追加する
+  SetUp = ->
+    # 背景追加
+    game.add.image(0, 0, 'alps')
+    # にゃんにゃんグループ初期化
+    m_nyan_group = game.add.group()
+    m_nyan_group.createMultiple(MAX_NYAN_OBJ, 'nyannyan')
+    m_nyan_group.enableBody = true
+    # にゃんにゃん生成イベント追加
+    game.time.events.loop(GEN_NYAN_TIMER_DEFAULT, GenerateNyanNyan, this)
 
   preload = ->
     game.time.advancedTiming = true;
@@ -30,44 +44,104 @@ GameMain = ->
     game.load.image('alps', '<%= image_path("nyan/alps.jpg") %>');
 
   create = ->
+    game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE;
     FixViewPort()
-    $('#phaser-nyan').css({
-      '-webkit-transform-origin': '0px 0px 0px'
-      '-webkit-transform': 'scale(' + m_game_scale + ')'
-    })
+    game.scale.setUserScale(m_game_scale, m_game_scale, 0, 0)
+    
+    m_setup_flg = true
 
-#    game.stage.backgroundColor = '#0072bc';
-    game.add.image(0, 0, 'alps')
-
-    # にゃんにゃんグループ初期化
-    m_nyan_group = game.add.group()
-    m_nyan_group.createMultiple(MAX_NYAN_OBJ, 'nyannyan')
-    m_nyan_group.enableBody = true
-
-    # にゃんにゃん生成イベント追加
-    game.time.events.loop(GEN_NYAN_TIMER_DEFAULT, GenerateNyanNyan, this)
-
-  
   # にゃんにゃんkillメソッド
   KillNyanNyan = (nyan)->
     nyan.kill()
-#    console.log("test")
+
+  # にゃんにゃんフェードアウト -> kill メソッド
+  SetNyanLife = (nyan)->
+#    tween = game.add.tween(nyan).to("", LIVE_NYAN_TIMER_DEFAULT, "Linear")
+#    .to({ alpha: 0 }, 400, "Linear", true)
+#    .to({ x: 0 - nyan.width }, 5000, "Linear", true)
+#    tween.onComplete.add(KillNyanNyan, nyan)
+    nyan.life_tween = tween
+
+  # にゃんにゃんテリトリー決定
+  GetNyanTerritory = -> 
+    m_territory = [0, 1, 2, 3] if (m_territory.length <= 0)
+    rand = m_rng.between(0, m_territory.length - 1)
+    ret = m_territory[rand]
+    m_territory.splice(rand, 1)
+
+    return ret
+
+  # にゃん移動メソッド
+  NyanMove = (nyan) ->
+    if nyan.stay_count < NYAN_STAY_FRAME_DEFAULT
+      nyan.stay_count += 1
+      return
+
+    nyan.x -= NYAN_MOVE_X
+    if nyan.x + nyan.width < 0
+      KillNyanNyan(nyan)
+    
+
+  # にゃんタッチメソッド
+  NyanTouch = (nyan, pointer) ->
+#    console.log nyan.x
+#    game.tweens.remove(nyan.life_tween)
+   KillNyanNyan(nyan)
+    
 
   # にゃんにゃん生成メソッド
   GenerateNyanNyan = ->
     nyan = m_nyan_group.getFirstExists(false)
-    nyan.reset(Math.random()*(FIELD_WIDTH - nyan.width), Math.random()*(FIELD_HEIGHT - nyan.height))
-    nyan.alpha = 1
+    return if !nyan?
     
-    # にゃんにゃんフェードアウト -> 削除
-    f_out = game.add.tween(nyan).to({ alpha: 0 }, 400, "Linear", true)
-    f_out.onComplete.add(KillNyanNyan, nyan)
+    # にゃんにゃんテリトリー決定
+    territory = GetNyanTerritory()
+    switch territory
+      when 0
+        x = m_rng.between(NYAN_OFS_X, FIELD_WIDTH / 2 - nyan.width)
+        y = m_rng.between(0, FIELD_HEIGHT / 2 - nyan.height)
+      when 1
+        x = m_rng.between(NYAN_OFS_X + FIELD_WIDTH / 2, FIELD_WIDTH - nyan.width)
+        y = m_rng.between(0              , FIELD_HEIGHT / 2 - nyan.height)
+      when 2
+        x = m_rng.between(NYAN_OFS_X               , FIELD_WIDTH / 2 - nyan.width)
+        y = m_rng.between(FIELD_HEIGHT / 2, FIELD_HEIGHT - nyan.height)
+      when 3
+        x = m_rng.between(NYAN_OFS_X + FIELD_WIDTH / 2 , FIELD_WIDTH - nyan.width)
+        y = m_rng.between(FIELD_HEIGHT / 2, FIELD_HEIGHT - nyan.height)
+      else
+        x = m_rng.between(NYAN_OFS_X, FIELD_WIDTH - nyan.width)
+        y = m_rng.between(0, FIELD_HEIGHT - nyan.height)
+
+    nyan.reset(x, y)
+    nyan.alpha = 1
+    nyan.stay_count = 0
+
+    # にゃんタッチイベント設定
+    nyan.inputEnabled = true
+    nyan.events.onInputDown.add(NyanTouch)
+
+    # にゃん生活設定
+#    SetNyanLife(nyan)
 
   update = ->
+    # しばらく時間を置いてからオブジェクト追加
+    if m_setup_flg && m_update_count >= 12
+      m_setup_flg = false
+      m_issetup = true
+      SetUp()
+    else if m_issetup == false
+      m_update_count += 1
+    
+    if m_issetup
+      m_nyan_group.forEach(NyanMove)
 
-  render = ->
+
+  DebugRender = ->
     yi = 32
     y = 0
+
+    return if !m_issetup
     game.debug.text('window.innerWidth : ' + window.innerWidth, 0, y += yi)
     game.debug.text('window.innerHeight : ' + window.innerHeight, 0, y += yi)
     
@@ -76,8 +150,15 @@ GameMain = ->
 
     game.debug.text('m_game_scale : ' + m_game_scale, 0, y += yi)
     game.debug.text('fps : ' + game.time.fps, 0, y += yi)
-    game.debug.text('NyanNyanCount : ' + m_nyan_group.length, 0, y += yi)
+    game.debug.text('NyanNyanCount : ' + m_nyan_group.countLiving(), 0, y += yi)
+    
+#    game.debug.inputInfo(0, y += yi);
+    
 
-  game = new Phaser.Game(FIELD_WIDTH, FIELD_HEIGHT, Phaser.AUTO, 'phaser-nyan', { preload, create, update, render });
+  render = ->
+    DebugRender()
+    
+  
+  game = new Phaser.Game(FIELD_WIDTH, FIELD_HEIGHT, Phaser.CANVAS, 'phaser-nyan', { preload, create, update, render });
 
 $(document).ready(GameMain)
