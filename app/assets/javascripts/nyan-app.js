@@ -13,7 +13,7 @@
 //= require jquery
 //= require jquery_ujs
 //= require phaser
+//= require nyan_settings
 //= require nyan
-//= require nyan-test
 //= require turbolinks
 

@@ -1,17 +1,4 @@
 GameMain = ->
-  FIELD_WIDTH = 720
-  FIELD_HEIGHT = 1120
-  # 画面に出す猫の最大数
-  MAX_NYAN_OBJ = 16
-  # 猫の生成間隔
-  GEN_NYAN_TIMER_DEFAULT = Phaser.Timer.QUARTER
-  # 猫の待機期間
-  NYAN_STAY_FRAME_DEFAULT = 40
-  # 猫の移動速度
-  NYAN_MOVE_X = 4
-  # 猫の出現オフセット
-  NYAN_OFS_X = 64
-
   m_game_scale = 1.0
   m_nyan_group = ""
   m_rng = new Phaser.RandomDataGenerator(new Date().toString())
@@ -20,11 +7,16 @@ GameMain = ->
   m_issetup = false
   m_setup_flg = false
 
+  m_nyancount_text = ""
+  m_nyancount = NYAN_COUNT_DEFAULT_MAX
+
+  m_startTime = ""
+  m_result_time_text = ""
+
   FixViewPort = ->
+    m_game_scale = window.innerHeight / FIELD_HEIGHT
     if (window.innerWidth / FIELD_WIDTH) < (window.innerHeight / FIELD_HEIGHT) 
       m_game_scale = window.innerWidth / FIELD_WIDTH
-    else 
-      m_game_scale = window.innerHeight / FIELD_HEIGHT
 
   # オブジェクトをゲームに追加する
   SetUp = ->
@@ -36,12 +28,36 @@ GameMain = ->
     m_nyan_group.enableBody = true
     # にゃんにゃん生成イベント追加
     game.time.events.loop(GEN_NYAN_TIMER_DEFAULT, GenerateNyanNyan, this)
+    
+    # 情報バー追加
+    game.add.image(INFO_BAR_X, INFO_BAR_Y, 'info_bar')
+    # miniにゃん追加
+    game.add.image(MINI_X, MINI_Y, 'mini_nyan')
+    
+    # 残りにゃんテキスト追加
+    m_nyancount_text = game.add.text(NYAN_COUNT_X, NYAN_COUNT_Y, "", {
+      font: "48px Arial",
+      fill: "#f0f0f0",
+      align: "center"
+    })
+
+    # 開始時刻取得
+    m_startTime = new Date()
+    # 経過時間テキスト追加
+    m_result_time_text = game.add.text(RESULT_TIME_COUNT_X, RESULT_TIME_COUNT_Y, "", {
+      font: "48px Arial",
+      fill: "#f0f0f0",
+      align: "center"
+    })
+    
 
   preload = ->
     game.time.advancedTiming = true;
 
-    game.load.image('nyannyan', '<%= image_path("nyan/nyannyan.png") %>');
-    game.load.image('alps', '<%= image_path("nyan/alps.jpg") %>');
+    game.load.image('nyannyan', '<%= image_path("nyan/nyannyan.png") %>')
+    game.load.image('alps', '<%= image_path("nyan/alps.jpg") %>')
+    game.load.image('info_bar', '<%= image_path("nyan/info_bar.png") %>')
+    game.load.image('mini_nyan', '<%= image_path("nyan/mini_nyan.png") %>')
 
   create = ->
     game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE;
@@ -60,7 +76,7 @@ GameMain = ->
 #    .to({ alpha: 0 }, 400, "Linear", true)
 #    .to({ x: 0 - nyan.width }, 5000, "Linear", true)
 #    tween.onComplete.add(KillNyanNyan, nyan)
-    nyan.life_tween = tween
+#    nyan.life_tween = tween
 
   # にゃんにゃんテリトリー決定
   GetNyanTerritory = -> 
@@ -84,34 +100,37 @@ GameMain = ->
 
   # にゃんタッチメソッド
   NyanTouch = (nyan, pointer) ->
-#    console.log nyan.x
-#    game.tweens.remove(nyan.life_tween)
-   KillNyanNyan(nyan)
-    
+    KillNyanNyan(nyan)
+    m_nyancount -= 1
 
   # にゃんにゃん生成メソッド
   GenerateNyanNyan = ->
+    # 書き換え用のにゃん確保できた？
     nyan = m_nyan_group.getFirstExists(false)
     return if !nyan?
+    
+    # 残りにゃん <= 画面に表示されるにゃん
+    if m_nyancount <= m_nyan_group.countLiving()
+      return
     
     # にゃんにゃんテリトリー決定
     territory = GetNyanTerritory()
     switch territory
       when 0
         x = m_rng.between(NYAN_OFS_X, FIELD_WIDTH / 2 - nyan.width)
-        y = m_rng.between(0, FIELD_HEIGHT / 2 - nyan.height)
+        y = m_rng.between(0, FIELD_HEIGHT / 2 - nyan.height - NYAN_OFS_BOTTOM)
       when 1
         x = m_rng.between(NYAN_OFS_X + FIELD_WIDTH / 2, FIELD_WIDTH - nyan.width)
-        y = m_rng.between(0              , FIELD_HEIGHT / 2 - nyan.height)
+        y = m_rng.between(0              , FIELD_HEIGHT / 2 - nyan.height - NYAN_OFS_BOTTOM)
       when 2
-        x = m_rng.between(NYAN_OFS_X               , FIELD_WIDTH / 2 - nyan.width)
+        x = m_rng.between(NYAN_OFS_X               , FIELD_WIDTH / 2 - nyan.width - NYAN_OFS_BOTTOM)
         y = m_rng.between(FIELD_HEIGHT / 2, FIELD_HEIGHT - nyan.height)
       when 3
         x = m_rng.between(NYAN_OFS_X + FIELD_WIDTH / 2 , FIELD_WIDTH - nyan.width)
-        y = m_rng.between(FIELD_HEIGHT / 2, FIELD_HEIGHT - nyan.height)
+        y = m_rng.between(FIELD_HEIGHT / 2, FIELD_HEIGHT - nyan.height - NYAN_OFS_BOTTOM)
       else
         x = m_rng.between(NYAN_OFS_X, FIELD_WIDTH - nyan.width)
-        y = m_rng.between(0, FIELD_HEIGHT - nyan.height)
+        y = m_rng.between(0, FIELD_HEIGHT - nyan.height - NYAN_OFS_BOTTOM)
 
     nyan.reset(x, y)
     nyan.alpha = 1
@@ -132,10 +151,19 @@ GameMain = ->
       SetUp()
     else if m_issetup == false
       m_update_count += 1
-    
-    if m_issetup
-      m_nyan_group.forEach(NyanMove)
 
+    if m_issetup
+      # にゃんにゃん移動
+      m_nyan_group.forEach(NyanMove)
+      # 残りにゃん数更新
+      m_nyancount_text.setText("x" + m_nyancount)
+      
+      # 経過時間更新
+      nowTime = new Date()
+      resultTime = nowTime.getTime() - m_startTime.getTime()
+      s = Math.floor(resultTime / 1000)
+      ms = resultTime % 1000
+      m_result_time_text.setText(s + "." + ms)
 
   DebugRender = ->
     yi = 32

@@ -13,6 +13,7 @@ Rails.application.routes.draw do
 
   get '/' => 'setsuko101#index', as: :setsuko101_index
   get '/nyan' => 'setsuko101#nyan', as: :setsuko101_nyan
+  post '/result' => 'setsuko101#result', as: :setsuko101_result
 
   # Example resource route (maps HTTP verbs to controller actions automatically):
   #   resources :products
